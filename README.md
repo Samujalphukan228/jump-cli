@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dzulab559/image/upload/v1781246591/jump-cli_etjibh.png" width="600" alt="jump-cli" />
+<img src="https://res.cloudinary.com/dzulab559/image/upload/v1781250387/PM_1_guibuw.png" width="600" alt="jump-cli" />
 
 <br/>
 
