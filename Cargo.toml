@@ -1,0 +1,16 @@
+[package]
+name = "jump"
+version = "0.1.0"
+edition = "2021"
+description = "Zero-config instant directory jumper"
+license = "MIT"
+
+[[bin]]
+name = "jump"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+walkdir = "2"
+dirs = "5"
+colored = "2"
