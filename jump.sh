@@ -2,12 +2,6 @@
 # Add to ~/.bashrc or ~/.zshrc
 
 function jump() {
-    # version check
-    if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
-        ~/.local/bin/jump-bin --version
-        return 0
-    fi
-
     # go back
     if [ "$1" = "-" ]; then
         local tmp

@@ -11,8 +11,12 @@ use walkdir::WalkDir;
 // ── CLI ────────────────────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "jump", about = "Zero-config instant directory jumper", version = "0.2.0")]
+#[command(name = "jump", about = "Zero-config instant directory jumper", version = "0.2.0", disable_version_flag = true)]
 struct Cli {
+    /// Print version
+    #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
+    _version: (),
+
     /// Directory name, "-" to go back, or "seg1 seg2" for multi-segment
     query: Option<String>,
 
