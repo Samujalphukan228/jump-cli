@@ -2,7 +2,7 @@
 set -e
 
 REPO="https://github.com/Samujalphukan228/jump-cli"
-RAW="https://raw.githubusercontent.com/Samujalphukan228/jump-cli/main"
+RAW="https://raw.githubusercontent.com/Samujalphukan228/jump-cli/master"
 BIN_NAME="jump-bin"
 BIN_DIR="$HOME/.local/bin"
 
@@ -12,6 +12,37 @@ info()    { printf "\033[1;36m==>\033[0m %s\n" "$1"; }
 success() { printf "\033[1;32m  ✓\033[0m %s\n" "$1"; }
 warn()    { printf "\033[1;33m  !\033[0m %s\n" "$1"; }
 die()     { printf "\033[1;31merror:\033[0m %s\n" "$1" >&2; exit 1; }
+
+# ── spinner ────────────────────────────────────────────────────────────────────
+
+SPINNER_PID=""
+
+spinner_start() {
+    label="$1"
+    (
+        frames="🕐 🕑 🕒 🕓 🕔 🕕 🕖 🕗 🕘 🕙 🕚 🕛"
+        i=0
+        n=12
+        while true; do
+            i=$(( (i + 1) % n ))
+            f=$(printf "%s" "$frames" | cut -d" " -f$(( i + 1 )))
+            printf "\r  %s %s" "$f" "$label"
+            sleep 0.1
+        done
+    ) &
+    SPINNER_PID=$!
+}
+
+spinner_stop() {
+    if [ -n "$SPINNER_PID" ]; then
+        kill "$SPINNER_PID" 2>/dev/null
+        wait "$SPINNER_PID" 2>/dev/null || true
+        SPINNER_PID=""
+        printf "\r\033[2K"
+    fi
+}
+
+trap 'spinner_stop' EXIT INT TERM
 
 # ── detect shell rc ────────────────────────────────────────────────────────────
 
@@ -32,7 +63,14 @@ install_rust_if_needed() {
     fi
 
     info "Rust not found — installing via rustup"
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    spinner_start "Downloading rustup..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/_rustup.sh
+    spinner_stop
+    success "rustup downloaded"
+
+    spinner_start "Installing Rust..."
+    sh /tmp/_rustup.sh -s -- -y --no-modify-path >/dev/null 2>&1
+    spinner_stop
     success "Rust installed"
 
     . "$HOME/.cargo/env"
@@ -44,14 +82,17 @@ build() {
     command -v cargo >/dev/null 2>&1 || . "$HOME/.cargo/env"
     command -v git   >/dev/null 2>&1 || die "git not found — please install git first"
 
-    info "Cloning jump-cli"
     TMP_DIR=$(mktemp -d)
+
+    spinner_start "Cloning jump-cli..."
     git clone --depth 1 "$REPO" "$TMP_DIR/jump-cli" >/dev/null 2>&1
+    spinner_stop
     success "Cloned"
 
-    info "Building (this may take a moment on first run)"
+    spinner_start "Building jump-cli (first run may take a moment)..."
     cd "$TMP_DIR/jump-cli"
-    cargo build --release --quiet
+    cargo build --release --quiet 2>/dev/null
+    spinner_stop
     success "Build complete"
 
     mkdir -p "$BIN_DIR"

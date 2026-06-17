@@ -1,6 +1,6 @@
 [package]
 name = "jump"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Zero-config instant directory jumper"
 license = "MIT"
@@ -14,3 +14,5 @@ clap = { version = "4", features = ["derive"] }
 walkdir = "2"
 dirs = "5"
 colored = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
