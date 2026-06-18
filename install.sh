@@ -20,11 +20,11 @@ BR_CYAN="\033[96m"
 BR_BLUE="\033[94m"
 BR_MAGENTA="\033[95m"
 
-rgb() { printf "\033[38;2;%s;%s;%sm" "$1" "$2" "$3"; }
+rgb()    { printf "\033[38;2;%s;%s;%sm" "$1" "$2" "$3"; }
 bg_rgb() { printf "\033[48;2;%s;%s;%sm" "$1" "$2" "$3"; }
 
-hide_cursor() { printf "\033[?25l"; }
-show_cursor() { printf "\033[?25h"; }
+hide_cursor()  { printf "\033[?25l"; }
+show_cursor()  { printf "\033[?25h"; }
 clear_screen() { printf "\033[2J\033[H"; }
 
 TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
@@ -63,6 +63,86 @@ spinner_stop() {
 }
 
 trap 'spinner_stop; show_cursor' EXIT INT TERM
+
+# ── Detect Shell RC ────────────────────────────────────────────────────────────
+
+detect_shell_rc() {
+    case "$SHELL" in
+        */zsh)  echo "$HOME/.zshrc" ;;
+        */bash) echo "$HOME/.bashrc" ;;
+        */fish) echo "$HOME/.config/fish/config.fish" ;;
+        *)      echo "$HOME/.bashrc" ;;
+    esac
+}
+
+# ── Uninstall ──────────────────────────────────────────────────────────────────
+
+uninstall() {
+    printf "\n"
+    printf "  ${BOLD}${RED}▸ Uninstalling jump-cli${RESET}\n"
+    printf "\n"
+
+    # Kill any running instance
+    pkill -f "$BIN_NAME" 2>/dev/null || true
+
+    # Remove binary
+    if [ -f "$BIN_DIR/$BIN_NAME" ]; then
+        rm -f "$BIN_DIR/$BIN_NAME"
+        success "Removed binary ${DIM}$BIN_DIR/$BIN_NAME${RESET}"
+    else
+        warn "Binary not found — skipping"
+    fi
+
+    # Remove wrapper from RC
+    RC=$(detect_shell_rc)
+    if grep -q "jump shell wrapper" "$RC" 2>/dev/null; then
+        cp "$RC" "${RC}.bak"
+
+        awk '
+            /^# jump shell wrapper/ { skip=1; next }
+            skip && /^function jump\(\)/ { next }
+            skip && /^function exp\(\)/  { next }
+            skip && /^}$/ { skip=0; next }
+            skip { next }
+            { print }
+        ' "${RC}.bak" > "$RC.tmp"
+
+        # Second pass — catch any leftover standalone functions
+        awk '
+            /^function jump\(\)/ || /^function exp\(\)/ { skip=1; next }
+            skip && /^}$/ { skip=0; next }
+            skip { next }
+            { print }
+        ' "$RC.tmp" > "$RC"
+
+        rm -f "$RC.tmp"
+
+        # Clean up excessive blank lines
+        awk 'NF>0{blank=0;print} NF==0{blank++;if(blank<=2)print}' "$RC" \
+            > "$RC.tmp" && mv "$RC.tmp" "$RC"
+
+        success "Removed shell wrapper from ${DIM}$RC${RESET}"
+        success "Backup saved at ${DIM}${RC}.bak${RESET}"
+    else
+        warn "No wrapper found in $RC — skipping"
+    fi
+
+    # Remove jump data directory
+    DATA_DIR="$HOME/.local/share/jump"
+    if [ -d "$DATA_DIR" ]; then
+        rm -rf "$DATA_DIR"
+        success "Removed data directory ${DIM}$DATA_DIR${RESET}"
+    else
+        warn "Data directory not found — skipping"
+    fi
+
+    printf "\n"
+    printf "  ${BOLD}${GREEN}✔ jump-cli uninstalled${RESET}\n"
+    printf "\n"
+    printf "  Run ${BOLD}source %s${RESET} to apply changes\n" "$(detect_shell_rc)"
+    printf "\n"
+    exit 0
+}
 
 # ── Animated Logo ──────────────────────────────────────────────────────────────
 
@@ -161,7 +241,7 @@ print_logo() {
         _r=$((_r + 1))
     done
 
-    # Badge slide
+    # Badge slide in from right
     _badge_row=$((_start_row + 7))
     _badge_text=" ⚡ jump-cli v0.4.0 "
     _badge_len=20
@@ -180,7 +260,7 @@ print_logo() {
     printf "$(bg_rgb 20 110 170)${BOLD}${WHITE}%s${RESET}" "$_badge_text"
     sleep 0.15
 
-    # Subtitle fade
+    # Subtitle fade in
     _sub_row=$((_badge_row + 2))
     _sub_text="directory jumper + file explorer"
     _sub_col=$(( (TERM_WIDTH - 31) / 2 ))
@@ -215,18 +295,7 @@ print_logo() {
     show_cursor
 }
 
-# ── Detect Shell ───────────────────────────────────────────────────────────────
-
-detect_shell_rc() {
-    case "$SHELL" in
-        */zsh)  echo "$HOME/.zshrc" ;;
-        */bash) echo "$HOME/.bashrc" ;;
-        */fish) echo "$HOME/.config/fish/config.fish" ;;
-        *)      echo "$HOME/.bashrc" ;;
-    esac
-}
-
-# ── Steps ──────────────────────────────────────────────────────────────────────
+# ── Install Rust ───────────────────────────────────────────────────────────────
 
 install_rust_if_needed() {
     if command -v cargo >/dev/null 2>&1; then
@@ -249,6 +318,8 @@ install_rust_if_needed() {
     . "$HOME/.cargo/env"
 }
 
+# ── Build ──────────────────────────────────────────────────────────────────────
+
 build() {
     command -v cargo >/dev/null 2>&1 || . "$HOME/.cargo/env"
     command -v git   >/dev/null 2>&1 || die "git not found — please install git first"
@@ -266,6 +337,10 @@ build() {
     spinner_stop
     success "Build complete"
 
+    # Kill running instance before replacing binary
+    pkill -f "$BIN_NAME" 2>/dev/null || true
+    sleep 0.3
+
     mkdir -p "$BIN_DIR"
     cp "target/release/jump" "$BIN_DIR/$BIN_NAME"
     chmod +x "$BIN_DIR/$BIN_NAME"
@@ -275,6 +350,8 @@ build() {
     rm -rf "$TMP_DIR"
 }
 
+# ── Optional Deps ──────────────────────────────────────────────────────────────
+
 install_deps() {
     info "Checking optional dependencies..."
 
@@ -282,7 +359,7 @@ install_deps() {
         success "chafa ${DIM}(image preview)${RESET}"
     else
         warn "chafa not found — install for image preview"
-        printf "    ${BR_BLACK}arch: ${DIM}sudo pacman -S chafa${RESET}\n"
+        printf "    ${BR_BLACK}arch:   ${DIM}sudo pacman -S chafa${RESET}\n"
         printf "    ${BR_BLACK}ubuntu: ${DIM}sudo apt install chafa${RESET}\n"
     fi
 
@@ -290,25 +367,48 @@ install_deps() {
         success "ffmpeg ${DIM}(video/audio preview)${RESET}"
     else
         warn "ffmpeg not found — install for video thumbnails"
-        printf "    ${BR_BLACK}arch: ${DIM}sudo pacman -S ffmpeg${RESET}\n"
+        printf "    ${BR_BLACK}arch:   ${DIM}sudo pacman -S ffmpeg${RESET}\n"
         printf "    ${BR_BLACK}ubuntu: ${DIM}sudo apt install ffmpeg${RESET}\n"
     fi
 }
 
+# ── Shell Wrapper ──────────────────────────────────────────────────────────────
+
 install_wrapper() {
     RC=$(detect_shell_rc)
 
-    if grep -q "jump-bin" "$RC" 2>/dev/null; then
+    # Precisely remove old wrapper block using awk
+    if grep -q "jump shell wrapper" "$RC" 2>/dev/null; then
         warn "Removing old wrapper from $RC"
         cp "$RC" "${RC}.bak"
-        sed -i '/^# jump shell wrapper/,/^}/d' "$RC"
-        sed -i '/^function jump()/,/^}/d' "$RC"
-        sed -i '/^function exp()/,/^}/d' "$RC"
-        sed -i '/^# Shortcut: .exp/,/^}/d' "$RC"
-        sed -i '/^$/N;/^\n$/d' "$RC"
+
+        awk '
+            /^# jump shell wrapper/ { skip=1; next }
+            skip && /^function jump\(\)/ { next }
+            skip && /^function exp\(\)/  { next }
+            skip && /^}$/ { skip=0; next }
+            skip { next }
+            { print }
+        ' "${RC}.bak" > "$RC.tmp"
+
+        # Second pass — leftover standalone functions
+        awk '
+            /^function jump\(\)/ || /^function exp\(\)/ { skip=1; next }
+            skip && /^}$/ { skip=0; next }
+            skip { next }
+            { print }
+        ' "$RC.tmp" > "$RC"
+
+        rm -f "$RC.tmp"
+
+        # Clean excessive blank lines
+        awk 'NF>0{blank=0;print} NF==0{blank++;if(blank<=2)print}' "$RC" \
+            > "$RC.tmp" && mv "$RC.tmp" "$RC"
+
+        success "Old wrapper removed ${DIM}(backup: ${RC}.bak)${RESET}"
     fi
 
-    info "Installing shell wrapper into $RC"
+    info "Installing shell wrapper into ${BOLD}$RC${RESET}"
 
     cat >> "$RC" << 'WRAPPER'
 
@@ -336,7 +436,6 @@ function jump() {
     else rm -f "$tmp"; fi
 }
 
-# File explorer shortcut
 function exp() {
     local tmp=$(mktemp)
     ~/.local/bin/jump-bin --explore "${1:-.}" --output "$tmp"
@@ -348,8 +447,10 @@ function exp() {
 }
 WRAPPER
 
-    success "Wrapper added"
+    success "Wrapper added ${DIM}(jump, exp)${RESET}"
 }
+
+# ── PATH ──────────────────────────────────────────────────────────────────────
 
 ensure_path() {
     RC=$(detect_shell_rc)
@@ -365,7 +466,34 @@ ensure_path() {
     esac
 }
 
+# ── Reload shell ───────────────────────────────────────────────────────────────
+
+reload_shell() {
+    RC=$(detect_shell_rc)
+    info "Activating jump and exp in current shell..."
+
+    # shellcheck disable=SC1090
+    . "$RC" 2>/dev/null || true
+
+    if type jump 2>/dev/null | grep -q function; then
+        success "jump is ready"
+    else
+        warn "jump not active — run: source $RC"
+    fi
+
+    if type exp 2>/dev/null | grep -q function; then
+        success "exp is ready"
+    else
+        warn "exp not active — run: source $RC"
+    fi
+}
+
 # ── Main ───────────────────────────────────────────────────────────────────────
+
+# Handle uninstall flag
+if [ "$1" = "--uninstall" ] || [ "$1" = "uninstall" ]; then
+    uninstall
+fi
 
 print_logo
 
@@ -376,19 +504,24 @@ build
 install_deps
 install_wrapper
 ensure_path
+reload_shell
 
 RC=$(detect_shell_rc)
 
 printf "\n"
 printf "  ${BOLD}${GREEN}✅ All done!${RESET}\n"
 printf "\n"
-printf "  Run this once to activate:\n"
+printf "  ${BOLD}${YELLOW}▸${RESET} Open a new terminal or run:\n"
 printf "\n"
 printf "    ${BOLD}$(bg_rgb 40 40 60)${WHITE} source %s ${RESET}\n" "$RC"
+printf "\n"
+printf "  ${BOLD}${CYAN}▸${RESET} Commands:\n"
 printf "\n"
 printf "    ${BOLD}${CYAN}jump src${RESET}        ${DIM}search & jump to directory${RESET}\n"
 printf "    ${BOLD}${CYAN}jump${RESET}            ${DIM}open search TUI${RESET}\n"
 printf "    ${BOLD}${CYAN}exp${RESET}             ${DIM}open file explorer${RESET}\n"
 printf "    ${BOLD}${CYAN}jump --list${RESET}     ${DIM}show history & pins${RESET}\n"
 printf "    ${BOLD}${CYAN}jump -${RESET}          ${DIM}go back${RESET}\n"
+printf "\n"
+printf "  ${DIM}To uninstall: ${BOLD}sh install.sh --uninstall${RESET}\n"
 printf "\n"
