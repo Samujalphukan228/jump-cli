@@ -6,23 +6,19 @@ RAW="https://raw.githubusercontent.com/Samujalphukan228/jump-cli/master"
 BIN_NAME="jump-bin"
 BIN_DIR="$HOME/.local/bin"
 
-# ── helpers ────────────────────────────────────────────────────────────────────
-
 info()    { printf "\033[1;36m==>\033[0m %s\n" "$1"; }
 success() { printf "\033[1;32m  ✓\033[0m %s\n" "$1"; }
 warn()    { printf "\033[1;33m  !\033[0m %s\n" "$1"; }
 die()     { printf "\033[1;31merror:\033[0m %s\n" "$1" >&2; exit 1; }
-
-# ── spinner ────────────────────────────────────────────────────────────────────
 
 SPINNER_PID=""
 
 spinner_start() {
     label="$1"
     (
-        frames="🕐 🕑 🕒 🕓 🕔 🕕 🕖 🕗 🕘 🕙 🕚 🕛"
+        frames="⣾ ⣽ ⣻ ⢿ ⡿ ⣟ ⣯ ⣷"
         i=0
-        n=12
+        n=8
         while true; do
             i=$(( (i + 1) % n ))
             f=$(printf "%s" "$frames" | cut -d" " -f$(( i + 1 )))
@@ -44,17 +40,14 @@ spinner_stop() {
 
 trap 'spinner_stop' EXIT INT TERM
 
-# ── detect shell rc ────────────────────────────────────────────────────────────
-
 detect_shell_rc() {
     case "$SHELL" in
         */zsh)  echo "$HOME/.zshrc" ;;
         */bash) echo "$HOME/.bashrc" ;;
+        */fish) echo "$HOME/.config/fish/config.fish" ;;
         *)      echo "$HOME/.bashrc" ;;
     esac
 }
-
-# ── step 1: install rust if missing ───────────────────────────────────────────
 
 install_rust_if_needed() {
     if command -v cargo >/dev/null 2>&1; then
@@ -76,7 +69,25 @@ install_rust_if_needed() {
     . "$HOME/.cargo/env"
 }
 
-# ── step 2: build ──────────────────────────────────────────────────────────────
+install_deps() {
+    info "Checking optional dependencies..."
+
+    if command -v chafa >/dev/null 2>&1; then
+        success "chafa found (image preview)"
+    else
+        warn "chafa not found — install for better image preview"
+        warn "  arch: sudo pacman -S chafa"
+        warn "  ubuntu: sudo apt install chafa"
+    fi
+
+    if command -v ffmpeg >/dev/null 2>&1; then
+        success "ffmpeg found (video/audio preview)"
+    else
+        warn "ffmpeg not found — install for video thumbnails"
+        warn "  arch: sudo pacman -S ffmpeg"
+        warn "  ubuntu: sudo apt install ffmpeg"
+    fi
+}
 
 build() {
     command -v cargo >/dev/null 2>&1 || . "$HOME/.cargo/env"
@@ -104,23 +115,65 @@ build() {
     rm -rf "$TMP_DIR"
 }
 
-# ── step 3: install shell wrapper ─────────────────────────────────────────────
-
 install_wrapper() {
     RC=$(detect_shell_rc)
 
+    # Remove old wrapper if present
     if grep -q "jump-bin" "$RC" 2>/dev/null; then
-        warn "Wrapper already present in $RC — skipping"
-        return
+        warn "Removing old wrapper from $RC"
+        # Create backup
+        cp "$RC" "${RC}.bak"
+        # Remove old jump and exp functions
+        sed -i '/^# jump shell wrapper/,/^}/d' "$RC"
+        sed -i '/^function jump()/,/^}/d' "$RC"
+        sed -i '/^function exp()/,/^}/d' "$RC"
+        sed -i '/^# Shortcut: .exp/,/^}/d' "$RC"
+        # Clean up empty lines
+        sed -i '/^$/N;/^\n$/d' "$RC"
     fi
 
     info "Installing shell wrapper into $RC"
-    curl -sSf "$RAW/jump.sh" >> "$RC"
-    printf "\n" >> "$RC"
-    success "Wrapper added to $RC"
+
+    cat >> "$RC" << 'WRAPPER'
+
+# jump shell wrapper — v0.4.0
+# Directory jumper + file explorer
+
+function jump() {
+    if [ "$1" = "-" ]; then
+        local tmp=$(mktemp)
+        ~/.local/bin/jump-bin - --output "$tmp"
+        local exit_code=$?
+        if [ $exit_code -ne 0 ]; then rm -f "$tmp"; return 1; fi
+        if [ -s "$tmp" ]; then
+            local target=$(cat "$tmp"); rm -f "$tmp"; cd "$target" || return 1
+        else rm -f "$tmp"; fi
+        return 0
+    fi
+
+    local tmp=$(mktemp)
+    ~/.local/bin/jump-bin "$@" --output "$tmp"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then rm -f "$tmp"; return 1; fi
+    if [ -s "$tmp" ]; then
+        local target=$(cat "$tmp"); rm -f "$tmp"; cd "$target" || return 1
+    else rm -f "$tmp"; fi
 }
 
-# ── step 4: ensure ~/.local/bin is in PATH ────────────────────────────────────
+# File explorer shortcut
+function exp() {
+    local tmp=$(mktemp)
+    ~/.local/bin/jump-bin --explore "${1:-.}" --output "$tmp"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then rm -f "$tmp"; return 1; fi
+    if [ -s "$tmp" ]; then
+        local target=$(cat "$tmp"); rm -f "$tmp"; cd "$target" || return 1
+    else rm -f "$tmp"; fi
+}
+WRAPPER
+
+    success "Wrapper added to $RC"
+}
 
 ensure_path() {
     RC=$(detect_shell_rc)
@@ -136,8 +189,6 @@ ensure_path() {
     esac
 }
 
-# ── step 5: reload shell ──────────────────────────────────────────────────────
-
 reload_shell() {
     RC=$(detect_shell_rc)
     info "Reloading shell config"
@@ -147,18 +198,32 @@ reload_shell() {
 
 # ── main ───────────────────────────────────────────────────────────────────────
 
-printf "\n\033[1mjump-cli installer\033[0m\n\n"
+printf "\n"
+printf "\033[1;36m     ⚡ jump-cli v0.4.0 installer\033[0m\n"
+printf "\033[0;90m     directory jumper + file explorer\033[0m\n"
+printf "\n"
 
 install_rust_if_needed
 build
+install_deps
 install_wrapper
 ensure_path
 reload_shell
 
 RC=$(detect_shell_rc)
 
-printf "\n\033[1;32mAll done!\033[0m\n\n"
-printf "Run this once to activate in your current terminal:\n\n"
-printf "  \033[1msource %s\033[0m\n\n" "$RC"
-printf "Then try:\n\n"
-printf "  \033[1mjump src\033[0m\n\n"
+printf "\n"
+printf "\033[1;32m  ✅ All done!\033[0m\n"
+printf "\n"
+printf "  Run this once to activate:\n"
+printf "\n"
+printf "    \033[1msource %s\033[0m\n" "$RC"
+printf "\n"
+printf "  Then try:\n"
+printf "\n"
+printf "    \033[1;36mjump src\033[0m        search & jump to directory\n"
+printf "    \033[1;36mjump\033[0m            open search TUI\n"
+printf "    \033[1;36mexp\033[0m             open file explorer\n"
+printf "    \033[1;36mjump --list\033[0m     show history & pins\n"
+printf "    \033[1;36mjump -\033[0m          go back\n"
+printf "\n"
