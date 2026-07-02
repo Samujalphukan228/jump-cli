@@ -15,10 +15,10 @@ pub fn shorten_path(path: &PathBuf) -> String {
 
 pub fn rank_badge(rank: u8) -> (&'static str, Color) {
     match rank {
-        0 => ("exact ", GREEN),
-        1 => ("prefix", CYAN),
+        0 => ("exact ", TEXT_BRIGHT),
+        1 => ("prefix", TEXT),
         2 => ("match ", TEXT_DIM),
-        _ => ("fuzzy ", YELLOW),
+        _ => ("fuzzy ", MUTED),
     }
 }
 
@@ -276,75 +276,22 @@ pub fn file_icon(name: &str, is_dir: bool) -> &'static str {
     }
 }
 
-/// Color for the file icon
+/// Color for the file icon — grayscale only
 pub fn file_icon_color(name: &str, is_dir: bool) -> Color {
     if is_dir {
         let n = name.to_lowercase();
         return match n.as_str() {
-            ".git" | ".github" => ORANGE,
-            "node_modules" | "vendor" | "target" | "build" | "dist" => MUTED,
-            ".vscode" | ".idea" => BLUE,
-            "src" | "source" | "lib" => CYAN,
-            "test" | "tests" | "spec" => YELLOW,
-            "docs" | "doc" => TEAL,
-            "config" | "conf" | ".config" => LAVENDER,
-            "assets" | "static" | "public" | "media" | "images" | "img" => PINK,
-            "scripts" | "bin" => GREEN,
-            "data" | "db" | "database" => YELLOW,
-            _ => BLUE,
+            "node_modules" | "vendor" | "target" | "build" | "dist" | ".git" | ".github" => MUTED,
+            "src" | "source" | "lib" | "test" | "tests" | "docs" | "doc" => TEXT_BRIGHT,
+            _ if name.starts_with('.') => TEXT_DIM,
+            _ => TEXT,
         };
     }
 
     let ext = name.rsplit('.').next().unwrap_or("").to_lowercase();
     match ext.as_str() {
-        "rs" => ORANGE,
-        "py" | "pyw" | "pyx" => YELLOW,
-        "js" | "mjs" | "cjs" | "jsx" => YELLOW,
-        "ts" | "mts" | "tsx" => BLUE,
-        "go" => CYAN,
-        "c" | "h" => BLUE,
-        "cpp" | "cc" | "hpp" => BLUE,
-        "cs" => LAVENDER,
-        "java" => ORANGE,
-        "kt" | "kts" => MAGENTA,
-        "swift" => ORANGE,
-        "rb" | "erb" => RED,
-        "php" => LAVENDER,
-        "lua" => BLUE,
-        "zig" => ORANGE,
-        "hs" => MAGENTA,
-        "ex" | "exs" => MAGENTA,
-        "jl" => MAGENTA,
-        "dart" => CYAN,
-        "scala" | "sc" => RED,
-        "clj" | "cljs" => GREEN,
-        "sh" | "bash" | "zsh" | "fish" => GREEN,
-        "html" | "htm" => ORANGE,
-        "css" => BLUE,
-        "scss" | "sass" | "less" => PINK,
-        "vue" => GREEN,
-        "svelte" => ORANGE,
-        "json" | "jsonc" => YELLOW,
-        "yaml" | "yml" => PEACH,
-        "toml" => ORANGE,
-        "xml" | "xsl" => ORANGE,
+        "lock" | "log" | "bak" | "tmp" | "swp" => MUTED,
         "md" | "mdx" | "rst" | "txt" => TEXT_DIM,
-        "sql" => BLUE,
-        "graphql" | "gql" => PINK,
-        "env" => YELLOW,
-        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp" => MAGENTA,
-        "mp3" | "wav" | "flac" | "ogg" => TEAL,
-        "mp4" | "mkv" | "avi" | "mov" | "webm" => PINK,
-        "zip" | "tar" | "gz" | "7z" | "rar" => ORANGE,
-        "pdf" => RED,
-        "doc" | "docx" => BLUE,
-        "xls" | "xlsx" => GREEN,
-        "lock" => MUTED,
-        "log" => MUTED,
-        "key" | "pem" | "crt" => YELLOW,
-        "nix" => BLUE,
-        "tex" | "latex" => TEAL,
-        "wasm" => MAGENTA,
         _ => TEXT_DIM,
     }
 }

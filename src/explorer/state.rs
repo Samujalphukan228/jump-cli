@@ -1,5 +1,6 @@
 // src/explorer/state.rs
 
+use super::layout::ExplorerLayout;
 use std::fs;
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
@@ -106,6 +107,7 @@ pub struct ExplorerState {
     preview_cache_kind: PreviewKind,
     preview_cache_info: Vec<String>,
     pub mounted_drives: Vec<MountedDrive>,
+    pub layout: ExplorerLayout,
 }
 
 impl ExplorerState {
@@ -139,6 +141,7 @@ impl ExplorerState {
             preview_cache_kind: PreviewKind::Empty,
             preview_cache_info: vec![],
             mounted_drives,
+            layout: ExplorerLayout::default(),
         }
     }
 
@@ -163,6 +166,26 @@ impl ExplorerState {
                 .cloned()
                 .collect();
         }
+        if let Some(parent) = self.cwd.parent() {
+            self.entries.insert(
+                0,
+                FileEntry {
+                    name: "..".to_string(),
+                    path: parent.to_path_buf(),
+                    is_dir: true,
+                    is_symlink: false,
+                    size: 0,
+                    modified: 0,
+                    is_hidden: false,
+                    is_executable: false,
+                    is_readonly: false,
+                },
+            );
+        }
+    }
+
+    pub fn is_parent_entry(entry: &FileEntry) -> bool {
+        entry.name == ".." && entry.is_dir
     }
 
     pub fn cycle_sort(&mut self) {
@@ -228,6 +251,9 @@ impl ExplorerState {
         self.filter.clear();
         self.filter_active = false;
         self.refresh();
+        if self.cwd.parent().is_some() && self.entries.len() > 1 {
+            self.selected = 1;
+        }
     }
 
     pub fn go_up(&mut self) {
@@ -239,7 +265,11 @@ impl ExplorerState {
             self.filter_active = false;
             self.refresh();
             if let Some(name) = old_name {
-                if let Some(idx) = self.entries.iter().position(|e| e.name == name) {
+                if let Some(idx) = self
+                    .entries
+                    .iter()
+                    .position(|e| e.name == name && !Self::is_parent_entry(e))
+                {
                     self.selected = idx;
                 }
             }

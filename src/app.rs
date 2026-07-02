@@ -1,6 +1,7 @@
 // src/app.rs
 
 use crate::store::VisitStats;
+use crate::ui::layout::JumpLayout;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,6 +23,7 @@ pub struct App {
     pub results: SearchResults,
     pub pins: HashMap<String, String>,
     pub frecency: HashMap<String, VisitStats>,
+    pub layout: JumpLayout,
 }
 
 impl App {
@@ -38,6 +40,7 @@ impl App {
             results: SearchResults::default(),
             pins,
             frecency,
+            layout: JumpLayout::default(),
         }
     }
 

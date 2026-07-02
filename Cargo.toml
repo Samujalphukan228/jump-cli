@@ -4,6 +4,10 @@ version = "0.4.0"
 edition = "2021"
 description = "Zero-config directory jumper + file explorer"
 license = "MIT"
+repository = "https://github.com/Samujalphukan228/jump-cli"
+readme = "README.md"
+keywords = ["cli", "terminal", "filesystem", "tui", "cd"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "jump"
@@ -19,3 +23,4 @@ ratatui = "0.29"
 crossterm = "0.28"
 open = "5"
 image = "0.25"
+nerd-font-symbols = "0.3"

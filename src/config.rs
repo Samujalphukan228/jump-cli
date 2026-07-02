@@ -2,36 +2,52 @@
 
 use ratatui::style::Color;
 
-pub const CYAN: Color = Color::Rgb(137, 220, 235);
-pub const CYAN_DIM: Color = Color::Rgb(69, 110, 118);
-pub const CYAN_BRIGHT: Color = Color::Rgb(180, 240, 250);
-pub const YELLOW: Color = Color::Rgb(249, 226, 175);
-pub const GREEN: Color = Color::Rgb(166, 227, 161);
-pub const RED: Color = Color::Rgb(243, 139, 168);
-pub const BLUE: Color = Color::Rgb(137, 180, 250);
-pub const MAGENTA: Color = Color::Rgb(203, 166, 247);
-pub const ORANGE: Color = Color::Rgb(250, 179, 135);
-pub const TEAL: Color = Color::Rgb(148, 226, 213);
-pub const PINK: Color = Color::Rgb(245, 194, 231);
-pub const LAVENDER: Color = Color::Rgb(180, 190, 254);
-pub const PEACH: Color = Color::Rgb(250, 179, 135);
+// ── VOID design system — #121212 / #FAFAFA monochrome ───────────────────────
 
-pub const BG: Color = Color::Rgb(24, 24, 37);
-pub const BG_SURFACE: Color = Color::Rgb(30, 30, 46);
-pub const BG_PANEL: Color = Color::Rgb(36, 39, 58);
-pub const BG_SELECTED: Color = Color::Rgb(49, 50, 68);
-pub const MUTED: Color = Color::Rgb(88, 91, 112);
-pub const TEXT: Color = Color::Rgb(205, 214, 244);
-pub const TEXT_DIM: Color = Color::Rgb(166, 173, 200);
-pub const TEXT_BRIGHT: Color = Color::Rgb(235, 240, 255);
-pub const BORDER: Color = Color::Rgb(69, 71, 90);
-pub const BORDER_ACTIVE: Color = Color::Rgb(137, 180, 250);
-pub const BORDER_DIM: Color = Color::Rgb(49, 50, 68);
+pub const BG: Color = Color::Rgb(18, 18, 18);
+pub const BG_SURFACE: Color = Color::Rgb(24, 24, 24);
+pub const BG_PANEL: Color = Color::Rgb(30, 30, 30);
+pub const BG_CARD: Color = Color::Rgb(22, 22, 22);
+pub const BG_INSET: Color = Color::Rgb(14, 14, 14);
+pub const BG_SELECTED: Color = Color::Rgb(46, 46, 46);
+pub const BG_OVERLAY: Color = Color::Rgb(12, 12, 12);
 
-pub const PHOSPHOR: Color = CYAN;
-pub const PHOSPHOR_DIM: Color = CYAN_DIM;
-pub const PHOSPHOR_BRIGHT: Color = CYAN_BRIGHT;
-pub const AMBER: Color = YELLOW;
+pub const TEXT: Color = Color::Rgb(250, 250, 250);
+pub const TEXT_BRIGHT: Color = Color::Rgb(255, 255, 255);
+pub const TEXT_DIM: Color = Color::Rgb(158, 158, 158);
+pub const MUTED: Color = Color::Rgb(97, 97, 97);
+pub const GHOST: Color = Color::Rgb(66, 66, 66);
+
+pub const BORDER: Color = Color::Rgb(56, 56, 56);
+pub const BORDER_DIM: Color = Color::Rgb(38, 38, 38);
+pub const BORDER_ACTIVE: Color = Color::Rgb(250, 250, 250);
+pub const RULE: Color = Color::Rgb(42, 42, 42);
+
+pub const RAIL: Color = Color::Rgb(250, 250, 250);
+pub const ACCENT: Color = TEXT;
+pub const ACCENT_DIM: Color = TEXT_DIM;
+pub const ACCENT_BRIGHT: Color = TEXT_BRIGHT;
+pub const ACCENT_SOFT: Color = Color::Rgb(224, 224, 224);
+pub const ACCENT_FAINT: Color = Color::Rgb(189, 189, 189);
+
+// Legacy aliases
+pub const CYAN: Color = ACCENT;
+pub const CYAN_DIM: Color = ACCENT_DIM;
+pub const CYAN_BRIGHT: Color = ACCENT_BRIGHT;
+pub const YELLOW: Color = ACCENT_SOFT;
+pub const GREEN: Color = ACCENT;
+pub const RED: Color = ACCENT_BRIGHT;
+pub const BLUE: Color = ACCENT;
+pub const MAGENTA: Color = ACCENT_DIM;
+pub const ORANGE: Color = ACCENT_SOFT;
+pub const TEAL: Color = ACCENT_DIM;
+pub const PINK: Color = ACCENT_DIM;
+pub const LAVENDER: Color = ACCENT_DIM;
+pub const PEACH: Color = ACCENT_SOFT;
+pub const PHOSPHOR: Color = ACCENT;
+pub const PHOSPHOR_DIM: Color = ACCENT_DIM;
+pub const PHOSPHOR_BRIGHT: Color = ACCENT_BRIGHT;
+pub const AMBER: Color = ACCENT_SOFT;
 
 pub const SKIP_DIRS: &[&str] = &[
     "node_modules", ".next", "dist", "build", "__pycache__",

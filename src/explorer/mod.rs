@@ -2,11 +2,13 @@
 
 mod actions;
 pub mod draw;
+mod layout;
 pub mod state;
 
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::ui::helpers::{tui_init, tui_restore};
 use state::ExplorerState;
@@ -17,6 +19,7 @@ pub fn run_explorer(start: &PathBuf) -> std::io::Result<Option<PathBuf>> {
     state.refresh();
 
     let mut tick: u64 = 0;
+    let mut last_click: Option<(Instant, u16, u16, usize)> = None;
 
     let result = loop {
         tick += 1;
@@ -25,7 +28,11 @@ pub fn run_explorer(start: &PathBuf) -> std::io::Result<Option<PathBuf>> {
         terminal.draw(|f| draw::draw_explorer(f, &mut state))?;
 
         if event::poll(Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
+            match event::read()? {
+                Event::Mouse(mouse) => {
+                    handle_mouse(&mut state, mouse, &mut last_click);
+                }
+                Event::Key(key) => {
 
                 // ── Live filter mode ──────────────────────────────────────
                 if state.filter_active {
@@ -132,12 +139,7 @@ pub fn run_explorer(start: &PathBuf) -> std::io::Result<Option<PathBuf>> {
 
                     // Open
                     KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
-                        if let Some(entry) = state.selected_entry() {
-                            let path = entry.path.clone();
-                            let is_dir = entry.is_dir;
-                            if is_dir { state.enter_dir(&path); }
-                            else { let _ = open::that(&path); state.status_msg = Some(format!("opened {}", path.display())); }
-                        }
+                        open_entry(&mut state);
                     }
 
                     // Open with
@@ -294,10 +296,67 @@ pub fn run_explorer(start: &PathBuf) -> std::io::Result<Option<PathBuf>> {
 
                     _ => {}
                 }
+                }
+                _ => {}
             }
         }
     };
 
     tui_restore(&mut terminal);
     Ok(result)
+}
+
+fn handle_mouse(
+    state: &mut ExplorerState,
+    mouse: MouseEvent,
+    last_click: &mut Option<(Instant, u16, u16, usize)>,
+) {
+    match mouse.kind {
+        MouseEventKind::ScrollUp => state.move_up(),
+        MouseEventKind::ScrollDown => state.move_down(),
+        MouseEventKind::Down(MouseButton::Left) => {
+            if let Some(idx) = state
+                .layout
+                .row_at(mouse.column, mouse.row, state.scroll_offset)
+            {
+                if idx < state.entries.len() {
+                    let now = Instant::now();
+                    let double = last_click
+                        .map(|(t, c, r, i)| {
+                            t.elapsed() < Duration::from_millis(400)
+                                && c == mouse.column
+                                && r == mouse.row
+                                && i == idx
+                        })
+                        .unwrap_or(false);
+                    state.selected = idx;
+                    state.invalidate_preview();
+                    if double {
+                        open_entry(state);
+                        *last_click = None;
+                    } else {
+                        *last_click = Some((now, mouse.column, mouse.row, idx));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn open_entry(state: &mut ExplorerState) {
+    if let Some(entry) = state.selected_entry() {
+        if ExplorerState::is_parent_entry(entry) {
+            state.go_up();
+            return;
+        }
+        let path = entry.path.clone();
+        let is_dir = entry.is_dir;
+        if is_dir {
+            state.enter_dir(&path);
+        } else {
+            let _ = open::that(&path);
+            state.status_msg = Some(format!("opened {}", path.display()));
+        }
+    }
 }

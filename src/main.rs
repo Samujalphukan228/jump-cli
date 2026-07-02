@@ -139,10 +139,12 @@ fn main() {
         std::process::exit(1);
     }
 
+    let local_depth = if cli.all { 0 } else { cli.local_depth };
+
     let target = match run_tui(
         cli.query,
         root,
-        cli.local_depth,
+        local_depth,
         cli.depth,
         cli.respect_gitignore,
         &store,
